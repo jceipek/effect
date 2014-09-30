@@ -30,6 +30,7 @@ require(["two"], function(Two) {
   var Color = {
     connected_outline: 'rgb(0,0,0)'
   , connected_fill: 'rgb(0,0,0)'
+  , connected_me_fill: 'rgb(155,239,255)'
   };
 
   var State = {
@@ -39,7 +40,6 @@ require(["two"], function(Two) {
   , events: []
   , estimatedTimeOffset: null
   };
-
 
   var offsetRef = new Firebase(Constants.firebase_url + "/.info/serverTimeOffset");
   offsetRef.on("value", function(snap) {
@@ -58,16 +58,27 @@ require(["two"], function(Two) {
       owner: owner
     , graphics: renderer.makeRectangle(x,y,15,30)
     , duration: 1000
+    , cooldown: 200
     , timeStarted: undefined
     , currState: 0
+    , getNextState: function (state) {
+        return state + 1;
+      }
     , gotoNextState: function (fraction, fromState) {
         var lastState = this.currState;
+        if (fraction < 0) {
+          console.log("NEGATIVE");
+        }
         if (fraction > 1) {
           this.currState = fromState + 1;
           fraction = 1;
         }
         this.graphics.rotation = fromState * Math.PI/2 +
                                  (fraction * Math.PI/2);
+      }
+    , snapToState: function (state) {
+        this.currState = state;
+        this.graphics.rotation = state * Math.PI/2;
       }
     };
   };
@@ -80,10 +91,11 @@ require(["two"], function(Two) {
   var eventRef = new Firebase(Constants.firebase_url + "/events/");
   elem.onclick = function () {
     if (State.avatars.hasOwnProperty(State.myRole)) {
+      var cooldown = State.avatars[State.myRole].cooldown;
       var duration = State.avatars[State.myRole].duration;
       var currTime = estimateCurrentTime();
       if (State.avatars[State.myRole].timeStarted === undefined ||
-          State.avatars[State.myRole].timeStarted + duration < estimateCurrentTime()) {
+          State.avatars[State.myRole].timeStarted + duration + cooldown < estimateCurrentTime()) {
         State.avatars[State.myRole].timeStarted = currTime;
         eventRef.push({ avatarIndex: State.myRole
                       , startTime: Firebase.ServerValue.TIMESTAMP
@@ -99,19 +111,36 @@ require(["two"], function(Two) {
     snap.forEach(function (child) {
       var endTime = child.val().startTime + child.val().duration;
       if (currTime > endTime) {
-        console.log("SHOULD REMOVE");
-        console.log(child);
+        var avatarIndex = child.val().avatarIndex;
+        var fromState = child.val().fromState;
+        var canonicalIndexRef = new Firebase(Constants.firebase_url + "/canonical/" + avatarIndex);
+        if (State.avatars.hasOwnProperty(avatarIndex)) {
+          canonicalIndexRef.set({state: State.avatars[avatarIndex].getNextState(fromState)});
+        }
         child.ref().remove();
       } else {
         State.events.push(child.val());
       }
     });
   });
+
+  var canonicalRef = new Firebase(Constants.firebase_url + "/canonical/");
+  canonicalRef.once('value', function (snap) {
+    snap.forEach(function (child) {
+      var index = child.name();
+      var state = child.val().state;
+      if (State.avatars.hasOwnProperty(index)) {
+        State.avatars[index].snapToState(state);
+      }
+    });
+  });
+
   // eventRef.on("child_added", function (childSnap) {
   //   State.events.push(childSnap.val());
   // });
 
-  State.avatars[1] = make_pipe(100,100,1,two);
+  State.avatars[1] = make_pipe(100, 100, 1, two);
+  State.avatars[3] = make_pipe(300, 100, 1, two);
 
   for (var i = 0; i < Constants.required_clients; i++) {
     var side_length = 10;
@@ -163,11 +192,16 @@ require(["two"], function(Two) {
       State.connection_indicators[i].noFill();
     }
     snap.forEach (function (child) {
-      if (child.val() > -1) {
-        State.connection_indicators[child.val()].fill = Color.connected_fill;
+      var index = child.val();
+      if (index > -1) {
+        if (index === State.myRole) {
+                State.connection_indicators[index].fill = Color.connected_me_fill;
+        } else {
+          State.connection_indicators[index].fill = Color.connected_fill;
+        }
       }
     });
-    console.log("# of online users = " + snap.numChildren());
+    // console.log("# of online users = " + snap.numChildren());
   });
 
   // rootRef.once('value', function (snapshot) {
@@ -194,13 +228,6 @@ require(["two"], function(Two) {
       if (State.avatars.hasOwnProperty(avatarIndex)) {
         var fractionComplete = elapsed/duration;
         State.avatars[avatarIndex].gotoNextState(fractionComplete, fromState);
-        // if (fractionComplete > 1) {
-        //   fractionComplete = 1;
-        // }
-        // // else {
-        //   State.avatars[avatarIndex].graphics.rotation = fractionComplete * Math.PI/2;
-        //   // console.log(elapsed/duration * Math.PI);
-        // // }
       }
     }
     // group.rotation =
