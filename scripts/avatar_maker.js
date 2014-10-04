@@ -89,6 +89,11 @@ define(['color', 'constants'], function(Color, Constants) {
       , startTime: undefined
       , directionVector: {x: 0, y: -1}
       , startPos: {x: x, y: y}
+      , lastPos: {x: x, y: y}
+      , resetPos: function (startTime) {
+          this.startTime = startTime;
+          this.lastPos = {x: this.startPos.x, y: this.startPos.y};
+        }
       , simulate: function (currTime) {
           if (this.startTime === undefined) {
             this.startTime = currTime;
@@ -98,6 +103,10 @@ define(['color', 'constants'], function(Color, Constants) {
           var newX = scale * this.directionVector.x + this.startPos.x;
           var newY = scale * this.directionVector.y + this.startPos.y;
           this.graphics.translation.set(newX, newY);
+        }
+      , snapToState: function (state) {
+          this.lastPos = state;
+          this.graphics.translation.set(state.x,state.y);
         }
       };
     }

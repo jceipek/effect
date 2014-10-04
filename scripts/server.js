@@ -7,12 +7,15 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
   , events: []
   , estimatedTimeOffset: null
   , grid: {}
-  , ball: null
+  , environment: {}
+  , environmentOwner: Constants.noOwner
   };
 
-  // var rootRef = new Firebase(Constants.firebaseUrl);
-  // Reset!
-  // rootRef.set({state: {time: 0}, presence: {}, canonical: []});
+  // XXX: TODO: Remove me
+  window.resetEffect = function () {
+    var rootRef = new Firebase(Constants.firebaseUrl);
+    rootRef.set({state: {time: 0}, presence: {}, canonical: [], environmentOwner: Constants.noOwner});
+  }
 
   var offsetRef = new Firebase(Constants.firebaseUrl + '/.info/serverTimeOffset');
   offsetRef.on("value", function(snap) {
@@ -29,17 +32,22 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
   var G = {
     init: function () {
       var _g = this;
-      var elem = document.getElementById('draw-shapes');
+      var elem = document.getElementById('effect');
       var params = Constants.canvasDims;
       var renderer = new Two(params).appendTo(elem);
 
       this.add_avatars(renderer);
       this.make_connection_visualizer(renderer);
 
-      this.connect_events(elem);
+      var eventRef = new Firebase(Constants.firebaseUrl + '/events/');
+      this.setup_input(elem, eventRef);
+      this.setup_event_processing(eventRef);
 
       this.setup_presence(function () {
-        _g.load_state(_g.setup_main_loop.bind(_g,renderer));
+        _g.load_state.call(_g, function () {
+          _g.setup_main_loop.call(_g, renderer);
+          _g.setup_environment_owner.call(_g);
+        });
       });
 
     }
@@ -65,11 +73,11 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
         State.grid[x][y] = avatar;
       }
 
-      State.ball = AvatarMaker.make_ball(Constants.noOwner
-                                        , renderer, { x: 2 * gridSquareSide
-                                        , y: 7 * gridSquareSide
-                                        , radius: 5
-                                        });
+      State.environment.ball = AvatarMaker.make_ball( Constants.noOwner
+                                                    , renderer, { x: 2 * gridSquareSide
+                                                    , y: 7 * gridSquareSide
+                                                    , radius: 5
+                                                    });
 
       var straightMaker = AvatarMaker.make_straight_pipe;
       var rhMaker = AvatarMaker.make_rh_pipe;
@@ -96,8 +104,7 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
         State.connectionIndicators.push(rect);
       }
     }
-  , connect_events: function (elem) {
-      var eventRef = new Firebase(Constants.firebaseUrl + '/events/');
+  , setup_input: function (elem, eventRef) {
       elem.onclick = function () {
         if (State.avatars.hasOwnProperty(State.myRole)) {
           var cooldown = State.avatars[State.myRole].cooldown;
@@ -106,7 +113,8 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
           if (State.avatars[State.myRole].timeStarted === undefined ||
               State.avatars[State.myRole].timeStarted + duration + cooldown < estimateCurrentTime()) {
             State.avatars[State.myRole].timeStarted = currTime;
-            eventRef.push({ avatarIndex: State.myRole
+            eventRef.push({ type: 'avatar'
+                          , avatarIndex: State.myRole
                           , startTime: Firebase.ServerValue.TIMESTAMP
                           , duration: duration
                           , fromState: State.avatars[State.myRole].currState
@@ -114,18 +122,33 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
           }
         }
       };
-
+    }
+  , setup_event_processing: function (eventRef) {
       eventRef.on('value', function (snap) {
         var currTime = estimateCurrentTime();
         State.events = [];
         snap.forEach(function (child) {
           var endTime = child.val().startTime + child.val().duration;
+          var eventType = child.val().type;
+
           if (currTime > endTime) {
-            var avatarIndex = child.val().avatarIndex;
-            var fromState = child.val().fromState;
-            var canonicalIndexRef = new Firebase(Constants.firebaseUrl + '/canonical/' + avatarIndex);
-            if (State.avatars.hasOwnProperty(avatarIndex)) {
-              canonicalIndexRef.set({state: State.avatars[avatarIndex].getNextState(fromState)});
+            var canonicalIndexRef;
+
+            switch (eventType) {
+              case 'avatar':
+                var avatarIndex = child.val().avatarIndex
+                  , fromState = child.val().fromState;
+                if (State.avatars.hasOwnProperty(avatarIndex)) {
+                  canonicalIndexRef = new Firebase(Constants.firebaseUrl + '/canonical/' + avatarIndex);
+                  canonicalIndexRef.set({state: State.avatars[avatarIndex].getNextState(fromState), atTime: currTime});
+                }
+                break;
+              case "ball":
+                canonicalIndexRef = new Firebase(Constants.firebaseUrl + '/canonicalEnvironment/ball');
+                canonicalIndexRef.set({state: State.environment.ball.lastPos, atTime: State.environment.ball.startTime});
+                break;
+              default:
+                console.error('Cannot process event ' + eventType);
             }
             child.ref().remove();
           } else {
@@ -136,6 +159,7 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
     }
   , load_state: function (cb) {
       var canonicalRef = new Firebase(Constants.firebaseUrl + '/canonical/');
+      var canonicalEnvironmentRef = new Firebase(Constants.firebaseUrl + '/canonicalEnvironment/');
       canonicalRef.once('value', function (snap) {
         snap.forEach(function (child) {
           var index = child.name();
@@ -144,15 +168,37 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
             State.avatars[index].snapToState(state);
           }
         });
-        cb();
+        canonicalEnvironmentRef.once('value', function (snap) {
+          snap.forEach(function (child) {
+            var thing = child.name();
+            var state = child.val().state;
+            switch (thing) {
+              case 'ball':
+                State.environment.ball.snapToState(state);
+                break;
+              default:
+                console.error('Cannot load state for ' + thing);
+            }
+          });
+          cb();
+        });
       });
     }
   , setup_main_loop: function (renderer) {
       renderer.bind('update', this.update).play(); // Start the animation loop
     }
+  , resetBall: function () {
+      State.environment.ball.startPos
+    }
   , update: function (frameCount, deltaTime) {
       var currTime = estimateCurrentTime();
-      State.ball.simulate(currTime);
+      if (State.myRole != Constants.noOwner && State.myRole === State.environmentOwner) {
+        if (State.environment.ball.startTime === undefined) {
+          State.environment.ball.startTime = currTime;
+        }
+
+      }
+      State.environment.ball.simulate(currTime);
       for (var i = State.events.length - 1; i >= 0; i--) {
         var currEvent = State.events[i];
         var avatarIndex = currEvent.avatarIndex;
@@ -165,6 +211,22 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
           State.avatars[avatarIndex].gotoNextState(fractionComplete, fromState);
         }
       }
+    }
+  , setup_environment_owner: function () {
+      // Ensure that there is always a unique environment owner
+      // as long as one person is connected, and that
+      // the owner is stored in State.environmentOwner
+      var environmentOwnerRef = new Firebase(Constants.firebaseUrl + '/environmentOwner');
+      environmentOwnerRef.on('value', function (snap) {
+        var currOwner = snap.val();
+        if (currOwner === Constants.noOwner) {
+          environmentOwnerRef.set(State.myRole);
+          State.environmentOwner = State.myRole;
+          environmentOwnerRef.onDisconnect().set(Constants.noOwner);
+        } else {
+          State.environmentOwner = currOwner;
+        }
+      });
     }
   , setup_presence: function (cb) {
       var listRef = new Firebase(Constants.firebaseUrl + '/presence/');
