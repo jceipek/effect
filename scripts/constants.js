@@ -8,4 +8,5 @@ define({
   , gridSquareSide: 30*2
   , pipeWidth: 15*2
   , pipeHeight: 30*2
+  , ballSpeedFactor: 0.04
   });

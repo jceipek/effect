@@ -105,20 +105,16 @@ define(['color', 'constants'], function(Color, Constants) {
                            , y: this.startPos.y
                            , directionVector: this.startDirectionVector};
         }
-      , simulate: function (currTime) { //, doSet) {
+      , simulate: function (currTime) {
           if (this.startTime === undefined) {
             this.startTime = currTime;
           }
           var elapsed = currTime - this.startTime;
-          var scale = elapsed * 0.01;
+          var scale = elapsed * Constants.ballSpeedFactor;
           var newX = scale * this.currState.directionVector.x + this.currState.x;
           var newY = scale * this.currState.directionVector.y + this.currState.y;
-          // if (doSet) {
-          //   this.startTime = currTime;
-          //   this.currState.x = newX;
-          //   this.currState.y = newY;
-          // }
           this.graphics.translation.set(newX, newY);
+
         }
       , should_reset: function (grid) {
           var oldGridLoc = { x: Math.floor((this.currState.x + Constants.gridSquareSide/2)/Constants.gridSquareSide)
@@ -137,7 +133,7 @@ define(['color', 'constants'], function(Color, Constants) {
       , change_state_if_necessary: function (currTime, grid) {
           // TODO: MAKE SURE GRID IS DONE FROM CENTER OR THIS WON'T WORK
           var elapsed = currTime - this.startTime;
-          var scale = elapsed * 0.01;
+          var scale = elapsed * Constants.ballSpeedFactor;
           var newX = scale * this.currState.directionVector.x + this.currState.x;
           var newY = scale * this.currState.directionVector.y + this.currState.y;
           var oldGridLoc = { x: Math.floor((this.currState.x + Constants.gridSquareSide/2)/Constants.gridSquareSide)

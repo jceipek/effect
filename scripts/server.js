@@ -128,6 +128,8 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
       eventRef.on('value', function (snap) {
         var currTime = estimateCurrentTime();
         State.events = [];
+        var mostRecentAvatarEvents = {};
+        var mostRecentEnvironmentEvents = {};
         snap.forEach(function (child) {
           var endTime = child.val().startTime + child.val().duration;
           var eventType = child.val().type;
@@ -145,21 +147,47 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
                 }
                 break;
               case 'environment':
-                var identifier = child.val().identifier;
-                canonicalIndexRef = new Firebase(Constants.firebaseUrl + '/canonicalEnvironment/' + identifier);
-                var startTime = State.environment[identifier].startTime;
-                console.log(State.environment[identifier]);
-                console.log("TRYING TO SEND: "+startTime);
-                canonicalIndexRef.set({state: State.environment[identifier].currState, atTime: startTime});
+                // var identifier = child.val().identifier;
+                // canonicalIndexRef = new Firebase(Constants.firebaseUrl + '/canonicalEnvironment/' + identifier);
+                // var startTime = State.environment[identifier].startTime;
+                // console.log(State.environment[identifier]);
+                // console.log("TRYING TO SEND: "+startTime);
+                // canonicalIndexRef.set({state: State.environment[identifier].currState, atTime: startTime});
                 break;
               default:
                 console.error('Cannot process event ' + eventType);
             }
             child.ref().remove();
           } else {
-            State.events.push(child.val());
+            switch (eventType) {
+              case 'avatar':
+                var avatarIndex = child.val().avatarIndex;
+                if (!mostRecentAvatarEvents.hasOwnProperty(avatarIndex) ||
+                    mostRecentAvatarEvents[avatarIndex].startTime < child.val().startTime) {
+                  mostRecentAvatarEvents[avatarIndex] = child.val();
+                }
+              break;
+              case 'environment':
+                var identifier = child.val().identifier;
+                if (!mostRecentEnvironmentEvents.hasOwnProperty(identifier) ||
+                    mostRecentEnvironmentEvents[identifier].startTime < child.val().startTime) {
+                  mostRecentEnvironmentEvents[identifier] = child.val();
+                }
+              break;
+            }
+            for (var avatarEvent in mostRecentAvatarEvents) {
+              if (mostRecentAvatarEvents.hasOwnProperty(avatarEvent)) {
+                State.events.push(mostRecentAvatarEvents[avatarEvent]);
+              }
+            }
+            for (var environmentEvent in mostRecentEnvironmentEvents) {
+              if (mostRecentEnvironmentEvents.hasOwnProperty(environmentEvent)) {
+                State.events.push(mostRecentEnvironmentEvents[environmentEvent]);
+              }
+            }
           }
         });
+
       });
     }
   , load_state: function (cb) {
@@ -214,17 +242,9 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
             State.avatars[avatarIndex].gotoNextState(fractionComplete, fromState);
           }
           if (type === 'environment') {
-            // TODO: Get rid of the fraction thing here and discard all but the newest environment event
-            // Then we can also stop using duration for this, except as a way to clean up old events
-            if (State.myRole != Constants.noOwner && State.myRole === !State.environmentOwner && fractionComplete <= 1) {
-              // console.log('SHOULD SIM ' + identifier + " " + fractionComplete);
-              // doSet = true;
-
-              // TODO: Instead of snapping to a state, offset based on elapsed time!
-              State.environment[identifier].snap_to_state(fromState, currTime);
+            if (State.myRole !== Constants.noOwner && State.myRole !== State.environmentOwner) {
+              State.environment[identifier].snap_to_state(fromState, startTime);
             }
-
-            // State.environment[identifier].simulate(currTime, doSet);
           }
         }
 
@@ -232,24 +252,29 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
         // they change the state of the environment objects, which may make them change how they move
         for (var identifier in State.environment) {
           if (State.environment.hasOwnProperty(identifier)) {
-            // var doSet = false;
             if (State.myRole != Constants.noOwner && State.myRole === State.environmentOwner) {
-              // doSet = true;
               if (State.environment[identifier].should_reset(State.grid)) {
                 console.log("RESET!");
                 _g.reset_ball(currTime);
-              }
-              if (State.environment[identifier].change_state_if_necessary(currTime, State.grid)) {
+                console.log("RESET EVENT");
+                eventRef.push({ type: 'environment'
+                  , identifier: identifier
+                  , startTime: currTime//Firebase.ServerValue.TIMESTAMP
+                  , duration: 10
+                  , fromState: State.environment[identifier].currState
+                  });
+                  continue; // So we don't simulate another time
+              } else if (State.environment[identifier].change_state_if_necessary(currTime, State.grid)) {
                 eventRef.push({ type: 'environment'
                   , identifier: identifier
                   , startTime: Firebase.ServerValue.TIMESTAMP
-                  , duration: 500
+                  , duration: 10
                   , fromState: State.environment[identifier].currState
                   });
                   continue; // So we don't simulate another time
               }
             }
-            State.environment[identifier].simulate(currTime); // , doSet);
+            State.environment[identifier].simulate(currTime);
           }
         }
       }
@@ -257,7 +282,7 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
   , init_environment_simulation: function (eventRef) {
       var currTime = estimateCurrentTime();
       // Send event to start ball moving!
-      var duration = 500; // Use as arbitrary sync signal?
+      var duration = 10; // Use as arbitrary sync signal?
       State.environment.ball.startTime = currTime;
       console.log("INIT ENV FROM ");
       console.log(State.environment.ball.currState.x + " " + State.environment.ball.currState.y);
