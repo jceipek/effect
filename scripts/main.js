@@ -14,6 +14,6 @@ require.config({
 }
 });
 
-define(['server'], function(Server) {
+define(['server', 'color'], function(Server) {
   Server.init();
 });
