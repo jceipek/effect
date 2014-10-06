@@ -191,12 +191,13 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
       });
     }
   , setup_main_loop: function (renderer, eventRef) {
-      renderer.bind('update', this.make_update(eventRef)).play(); // Start the animation loop
+      renderer.bind('update', this.make_update.call(this,eventRef)).play(); // Start the animation loop
     }
-  , reset_ball: function () {
-      State.environment.ball.startPos
+  , reset_ball: function (currTime) {
+      State.environment.ball.reset_pos(currTime);
     }
   , make_update: function (eventRef) {
+      var _g = this;
       return function (frameCount, deltaTime) {
         var currTime = estimateCurrentTime();
         for (var i = State.events.length - 1; i >= 0; i--) {
@@ -234,6 +235,10 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
             // var doSet = false;
             if (State.myRole != Constants.noOwner && State.myRole === State.environmentOwner) {
               // doSet = true;
+              if (State.environment[identifier].should_reset(State.grid)) {
+                console.log("RESET!");
+                _g.reset_ball(currTime);
+              }
               if (State.environment[identifier].change_state_if_necessary(currTime, State.grid)) {
                 eventRef.push({ type: 'environment'
                   , identifier: identifier

@@ -103,7 +103,7 @@ define(['color', 'constants'], function(Color, Constants) {
           this.startTime = startTime;
           this.currState = { x: this.startPos.x
                            , y: this.startPos.y
-                           , directionVector: startDirectionVector};
+                           , directionVector: this.startDirectionVector};
         }
       , simulate: function (currTime) { //, doSet) {
           if (this.startTime === undefined) {
@@ -119,6 +119,20 @@ define(['color', 'constants'], function(Color, Constants) {
           //   this.currState.y = newY;
           // }
           this.graphics.translation.set(newX, newY);
+        }
+      , should_reset: function (grid) {
+          var oldGridLoc = { x: Math.floor((this.currState.x + Constants.gridSquareSide/2)/Constants.gridSquareSide)
+                           , y: Math.floor((this.currState.y + Constants.gridSquareSide/2)/Constants.gridSquareSide) + 1};
+          var nextGridLoc = { x: oldGridLoc.x + this.currState.directionVector.x
+                            , y: oldGridLoc.y + this.currState.directionVector.y};
+          if (grid.hasOwnProperty(nextGridLoc.x) && grid[nextGridLoc.x].hasOwnProperty(nextGridLoc.y)) {
+            var gridItem = grid[nextGridLoc.x][nextGridLoc.y];
+            if (gridItem.get_result === undefined || gridItem.get_result(this.currState.directionVector) === false) {
+              console.log("RESET BECAUSE "+gridItem.currState);
+              return true;
+            }
+          }
+          return false;
         }
       , change_state_if_necessary: function (currTime, grid) {
           // TODO: MAKE SURE GRID IS DONE FROM CENTER OR THIS WON'T WORK
@@ -137,11 +151,14 @@ define(['color', 'constants'], function(Color, Constants) {
             console.log("PASSING TO "+newGridLoc.x+" "+newGridLoc.y);
             if (grid.hasOwnProperty(newGridLoc.x) && grid[newGridLoc.x].hasOwnProperty(newGridLoc.y)) {
               var gridItem = grid[newGridLoc.x][newGridLoc.y];
-              if (gridItem.type === Constants.angledPipe) {
-                console.log("Passing Over Angled Pipe!");
-                // TODO: Fix so it is in correct direction!
-                this.currState.directionVector.x = 1;
-                this.currState.directionVector.y = 0;
+              if (gridItem.type === Constants.angledPipe ||
+                  gridItem.type === Constants.straightPipe) {
+                var newDir = gridItem.get_result(this.currState.directionVector);
+                if (newDir !== false) {
+                  this.currState.directionVector = newDir;
+                } else {
+                  console.log("ERROR, SHOULD RESET!");
+                }
               }
             }
 
@@ -157,11 +174,62 @@ define(['color', 'constants'], function(Color, Constants) {
     }
   , make_straight_pipe: function (owner, renderer, dims) {
       var graphics = make_straight_pipe_graphics(renderer, dims);
-      return make_pipe(owner, Constants.straightPipe, graphics);
+      var p = make_pipe(owner, Constants.straightPipe, graphics);
+      p.get_result = function (direction) {
+        if (p.currState % 2 === 0 && direction.y !== 0 && direction.x === 0) {
+          return {x: 0, y: direction.y};
+        }
+        if (p.currState % 2 === 1 && direction.y === 0 && direction.x !== 0) {
+          return {x: direction.x, y: 0};
+        }
+
+        return false;
+      }
+      return p;
     }
   , make_rh_pipe: function (owner, renderer, dims) {
       var graphics = make_rh_pipe_graphics(renderer, dims);
-      return make_pipe(owner, Constants.angledPipe, graphics);
+      var p = make_pipe(owner, Constants.angledPipe, graphics);
+      p.get_result = function (direction) {
+        if (p.currState % 4 === 0 && direction.y < 0 && direction.x === 0) {
+          // From Below
+          return {x: 1, y: 0};
+        }
+        if (p.currState % 4 === 0 && direction.y === 0 && direction.x < 0) {
+          // From Right
+          return {x: 0, y: 1};
+        }
+
+        if (p.currState % 4 === 1 && direction.y < 0 && direction.x === 0) {
+          // From Below
+          return {x: -1, y: 0};
+        }
+        if (p.currState % 4 === 1 && direction.y === 0 && direction.x > 0) {
+          // From Left
+          return {x: 0, y: 1};
+        }
+
+        if (p.currState % 4 === 2 && direction.y > 0 && direction.x === 0) {
+          // From Above
+          return {x: -1, y: 0};
+        }
+        if (p.currState % 4 === 2 && direction.y === 0 && direction.x > 0) {
+          // From Left
+          return {x: 0, y: -1};
+        }
+
+        if (p.currState % 4 === 3 && direction.y > 0 && direction.x === 0) {
+          // From Above
+          return {x: 1, y: 0};
+        }
+        if (p.currState % 4 === 3 && direction.y === 0 && direction.x < 0) {
+          // From Right
+          return {x: 0, y: -1};
+        }
+
+        return false;
+      }
+      return p;
     }
   };
 
