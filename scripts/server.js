@@ -204,8 +204,6 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
       add_action_tile(AvatarMaker.make_ouroboros_tile, {x: 1, y: 9});
       add_action_tile(AvatarMaker.make_crash_tile, {x: 5, y: 0});
 
-      add_action_tile(AvatarMaker.make_crash_tile, {x: 9, y: 7}); // XXX: REMOVE ME (USED FOR DEBUGGING)
-
     }
   , make_connection_visualizer: function (renderer) {
       for (var i = 0; i < Constants.requiredClients; i++) {
