@@ -122,7 +122,7 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
       add_pipe(Constants.noOwner, straightMaker, {x: 2, y: 1}, 1);
       add_pipe(Constants.noOwner, rhMaker, {x: 3, y: 1}, 1);
 
-      add_pipe(0, rhMaker, {x: 5, y: 1}, 1);
+      add_pipe(0, rhMaker, {x: 5, y: 1}, 0); //1
       add_pipe(Constants.noOwner, straightMaker, {x: 6, y: 1}, 1);
       add_pipe(Constants.noOwner, straightMaker, {x: 7, y: 1}, 1);
       add_pipe(Constants.noOwner, straightMaker, {x: 8, y: 1}, 1);
@@ -140,33 +140,33 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
       add_pipe(Constants.noOwner, straightMaker, {x: 10, y: 2}, 0);
 
       add_pipe(Constants.noOwner, rhMaker, {x: 1, y: 3}, 0);
-      add_pipe(1, rhMaker, {x: 2, y: 3}, 2);
-      add_pipe(2, rhMaker, {x: 3, y: 3}, 3);
+      add_pipe(1, rhMaker, {x: 2, y: 3}, 0); //2
+      add_pipe(2, rhMaker, {x: 3, y: 3}, 1); //3
       add_pipe(Constants.noOwner, rhMaker, {x: 4, y: 3}, 1);
       add_pipe(Constants.noOwner, straightMaker, {x: 5, y: 3}, 0);
-      add_pipe(3, rhMaker, {x: 6, y: 3}, 0);
+      add_pipe(3, rhMaker, {x: 6, y: 3}, 1); //0
       add_pipe(Constants.noOwner, straightMaker, {x: 7, y: 3}, 1);
       add_pipe(Constants.noOwner, rhMaker, {x: 8, y: 3}, 1);
-      add_pipe(4, rhMaker, {x: 9, y: 3}, 3);
+      add_pipe(4, rhMaker, {x: 9, y: 3}, 2); //3
       add_pipe(Constants.noOwner, rhMaker, {x: 10, y: 3}, 2);
 
       add_pipe(Constants.noOwner, straightMaker, {x: 1, y: 4}, 0);
-      add_pipe(5, rhMaker, {x: 2, y: 4}, 0);
+      add_pipe(5, rhMaker, {x: 2, y: 4}, 3); //0
       add_pipe(Constants.noOwner, rhMaker, {x: 3, y: 4}, 1);
-      add_pipe(6, rhMaker, {x: 4, y: 4}, 3);
-      add_pipe(7, rhMaker, {x: 5, y: 4}, 2);
+      add_pipe(6, rhMaker, {x: 4, y: 4}, 2); //3
+      add_pipe(7, rhMaker, {x: 5, y: 4}, 1); //2
       add_pipe(Constants.noOwner, straightMaker, {x: 6, y: 4}, 0);
       add_pipe(Constants.noOwner, rhMaker, {x: 8, y: 4}, 3);
       add_pipe(Constants.noOwner, rhMaker, {x: 9, y: 4}, 1);
 
       add_pipe(Constants.noOwner, rhMaker, {x: 1, y: 5}, 3);
       add_pipe(Constants.noOwner, rhMaker, {x: 2, y: 5}, 2);
-      add_pipe(8, rhMaker, {x: 3, y: 5}, 0);
+      add_pipe(8, rhMaker, {x: 3, y: 5}, 3); //0
       add_pipe(Constants.noOwner, straightMaker, {x: 4, y: 5}, 1);
       add_pipe(Constants.noOwner, straightMaker, {x: 5, y: 5}, 1);
-      add_pipe(9, rhMaker, {x: 6, y: 5}, 0);
+      add_pipe(9, rhMaker, {x: 6, y: 5}, 2); // 0
       add_pipe(Constants.noOwner, straightMaker, {x: 7, y: 5}, 1);
-      add_pipe(10, rhMaker, {x: 8, y: 5}, 1);
+      add_pipe(10, rhMaker, {x: 8, y: 5}, 3); //1
       add_pipe(Constants.noOwner, rhMaker, {x: 9, y: 5}, 2);
 
       add_pipe(Constants.noOwner, straightMaker, {x: 1, y: 6}, 0);
@@ -182,12 +182,12 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
 
       add_pipe(Constants.noOwner, rhMaker, {x: 1, y: 7}, 0);
       add_pipe(Constants.noOwner, straightMaker, {x: 2, y: 7}, 1);
-      add_pipe(11, rhMaker, {x: 3, y: 7}, 1);
+      add_pipe(11, rhMaker, {x: 3, y: 7}, 2); //1
       add_pipe(Constants.noOwner, straightMaker, {x: 4, y: 7}, 1);
       add_pipe(Constants.noOwner, straightMaker, {x: 5, y: 7}, 1);
       add_pipe(Constants.noOwner, straightMaker, {x: 6, y: 7}, 1);
-      add_pipe(12, rhMaker, {x: 7, y: 7}, 0);
-      add_pipe(13, straightMaker, {x: 8, y: 7}, 1);
+      add_pipe(12, rhMaker, {x: 7, y: 7}, 3); //0
+      add_pipe(13, straightMaker, {x: 8, y: 7}, 0); //1
       add_pipe(Constants.noOwner, straightMaker, {x: 9, y: 7}, 1);
       add_pipe(Constants.noOwner, rhMaker, {x: 10, y: 7}, 1);
 
