@@ -9,6 +9,7 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
   , grid: {}
   , environment: {}
   , environmentOwner: Constants.noOwner
+  , processedTitleEvents: {}
   };
 
   window._inspect_state = State;
@@ -207,6 +208,7 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
       };
     }
   , setup_event_processing: function (eventRef) {
+      var _g = this;
       eventRef.on('value', function (snap) {
         var currTime = estimateCurrentTime();
         State.events = [];
@@ -236,6 +238,10 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
                 // console.log("TRYING TO SEND: "+startTime);
                 // canonicalIndexRef.set({state: State.environment[identifier].currState, atTime: startTime});
                 break;
+              case 'title':
+                // Processed earlier
+                delete State.processedTitleEvents[child.val().startTime]; // To free space
+                break;
               default:
                 console.error('Cannot process event ' + eventType);
             }
@@ -256,6 +262,19 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
                   mostRecentEnvironmentEvents[identifier] = child.val();
                 }
               break;
+              case 'title':
+                // NOTE: Pretty sure the env owner is showing the titlecard twice
+                var identifier = child.val().identifier;
+                var text = child.val().fromState;
+                var startTime = child.val().startTime;
+                var duration = child.val().duration;
+                if (State.processedTitleEvents[startTime] === undefined) {
+                  State.processedTitleEvents[startTime] = true;
+                  _g.flash_titlecard(text, duration);
+                }
+              break;
+              default:
+                console.error('Cannot process event ' + eventType);
             }
             for (var avatarEvent in mostRecentAvatarEvents) {
               if (mostRecentAvatarEvents.hasOwnProperty(avatarEvent)) {
@@ -307,12 +326,13 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
       State.environment.ball.reset_pos(currTime);
       this.flash_titlecard('passive');
     }
-  , flash_titlecard: function (word) {
+  , flash_titlecard: function (word, duration) {
+      duration = duration ? duration : 1000;
       $('.js-word-content').text(word);
       $('.js-word-transition').removeClass('hidden');
       setTimeout(function () {
         $('.js-word-transition').addClass('hidden');
-      }, 1000);
+      }, duration);
     }
   , make_update: function (eventRef) {
       var _g = this;
@@ -352,6 +372,12 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
                   , startTime: currTime//Firebase.ServerValue.TIMESTAMP
                   , duration: 10
                   , fromState: State.environment[identifier].currState
+                  });
+                eventRef.push({ type: 'title'
+                  , identifier: 'reset'
+                  , startTime: Firebase.ServerValue.TIMESTAMP
+                  , duration: 1000
+                  , fromState: 'passive'
                   });
                   continue; // So we don't simulate another time
               } else if (State.environment[identifier].change_state_if_necessary(currTime, State.grid)) {
