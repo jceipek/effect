@@ -1,4 +1,4 @@
-define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Constants, AvatarMaker) {
+define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two, Color, Constants, AvatarMaker) {
 
   var State = {
     connectionIndicators: []
@@ -35,6 +35,7 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
     init: function () {
       var _g = this;
       var elem = document.getElementById('effect');
+      $('.js-word-transition').addClass('hidden');
       var renderer = new Two(Constants.canvasDims).appendTo(elem);
 
       this.add_avatars(renderer);
@@ -304,6 +305,14 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
     }
   , reset_ball: function (currTime) {
       State.environment.ball.reset_pos(currTime);
+      this.flash_titlecard('passive');
+    }
+  , flash_titlecard: function (word) {
+      $('.js-word-content').text(word);
+      $('.js-word-transition').removeClass('hidden');
+      setTimeout(function () {
+        $('.js-word-transition').addClass('hidden');
+      }, 1000);
     }
   , make_update: function (eventRef) {
       var _g = this;

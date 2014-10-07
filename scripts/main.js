@@ -6,11 +6,12 @@ require.config({
   paths: {
     domReady: '3rd-party/domReady'
   , two: '3rd-party/two.min'
+  , jquery: '3rd-party/jquery-2.1.1.min'
 }
 , shim: {
-    // zepto: {
-    //   exports: '$'
-    // }
+    jquery: {
+      exports: '$'
+    }
 }
 });
 
