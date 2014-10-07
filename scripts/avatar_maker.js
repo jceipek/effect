@@ -87,11 +87,29 @@ define(['color', 'constants'], function(Color, Constants) {
   };
 
   var G = {
-    make_ball: function (owner, renderer, dims) {
+    make_ouroboros_tile: function () {
+      return {
+        type: Constants.ouroborosTile
+      }
+    }
+  , make_crash_tile: function () {
+      return {
+        type: Constants.crashTile
+      }
+    }
+  , make_ball: function (owner, renderer, dims) {
       var x = dims.x? dims.x : 0
         , y = dims.y? dims.y : 0
         , radius = dims.radius? dims.radius : 30
         , graphics = renderer.makeCircle(x,y,radius);
+
+      var getNextPos = function (currTime, startTime, state) {
+          var elapsed = currTime - startTime;
+          var scale = elapsed * Constants.ballSpeedFactor;
+          var newX = scale * state.directionVector.x + state.x;
+          var newY = scale * state.directionVector.y + state.y;
+          return {x: newX, y: newY};
+      };
 
       graphics.fill = Color.ball;
       graphics.noStroke();
@@ -117,11 +135,8 @@ define(['color', 'constants'], function(Color, Constants) {
           if (this.startTime === undefined) {
             this.startTime = currTime;
           }
-          var elapsed = currTime - this.startTime;
-          var scale = elapsed * Constants.ballSpeedFactor;
-          var newX = scale * this.currState.directionVector.x + this.currState.x;
-          var newY = scale * this.currState.directionVector.y + this.currState.y;
-          this.graphics.translation.set(newX, newY);
+          var newPos = getNextPos(currTime, this.startTime, this.currState);
+          this.graphics.translation.set(newPos.x, newPos.y);
 
         }
       , should_reset: function (grid) {
@@ -132,32 +147,38 @@ define(['color', 'constants'], function(Color, Constants) {
           if (grid.hasOwnProperty(nextGridLoc.x) && grid[nextGridLoc.x].hasOwnProperty(nextGridLoc.y)) {
             var gridItem = grid[nextGridLoc.x][nextGridLoc.y];
             // gridItem._shade('blue');
+            if (gridItem.type === Constants.ouroborosTile) {
+              return Constants.resetReason.ouroboros;
+            }
+
+            if (gridItem.type === Constants.crashTile) {
+              return Constants.resetReason.crash;
+            }
+
             if (gridItem.get_result === undefined || gridItem.get_result(this.currState.directionVector) === false) {
               // console.log("RESET BECAUSE "+gridItem.currState);
-              return true;
+              return Constants.resetReason.hitWall;
             }
+          } else {
+            return Constants.resetReason.escapedSpace;
           }
           return false;
         }
       , change_state_if_necessary: function (currTime, grid) {
-          // TODO: MAKE SURE GRID IS DONE FROM CENTER OR THIS WON'T WORK
-          var elapsed = currTime - this.startTime;
-          var scale = elapsed * Constants.ballSpeedFactor;
-          var newX = scale * this.currState.directionVector.x + this.currState.x;
-          var newY = scale * this.currState.directionVector.y + this.currState.y;
+          var newPos = getNextPos(currTime, this.startTime, this.currState);
           var oldGridLoc = this.lastTile;//{ x: Math.ceil((this.currState.x)/Constants.gridSquareSide)
                            //, y: Math.ceil((this.currState.y)/Constants.gridSquareSide)};
 
           var nextGridLoc = { x: oldGridLoc.x + this.currState.directionVector.x
                             , y: oldGridLoc.y + this.currState.directionVector.y};
 
-        if (Math.abs(newX - (oldGridLoc.x * Constants.gridSquareSide - Constants.gridSquareSide/2)) >= Constants.gridSquareSide ||
-          Math.abs(newY - (oldGridLoc.y * Constants.gridSquareSide - Constants.gridSquareSide/2)) >= Constants.gridSquareSide) {
+        if (Math.abs(newPos.x - (oldGridLoc.x * Constants.gridSquareSide - Constants.gridSquareSide/2)) >= Constants.gridSquareSide ||
+          Math.abs(newPos.y - (oldGridLoc.y * Constants.gridSquareSide - Constants.gridSquareSide/2)) >= Constants.gridSquareSide) {
             this.startTime = currTime;
             // console.log("DIR "+this.currState.directionVector.x+", "+this.currState.directionVector.y);
             this.lastTile = {x: nextGridLoc.x, y: nextGridLoc.y};
-            this.currState.x = newX;
-            this.currState.y = newY;
+            this.currState.x = newPos.x;
+            this.currState.y = newPos.y;
             // console.log("AT "+this.lastTile.x+", "+this.lastTile.y);
             if (grid.hasOwnProperty(nextGridLoc.x) && grid[nextGridLoc.x].hasOwnProperty(nextGridLoc.y)) {
               var gridItem = grid[nextGridLoc.x][nextGridLoc.y];

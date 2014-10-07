@@ -2,13 +2,20 @@
   <head>
     <script src='https://cdn.firebase.com/js/client/1.0.15/firebase.js'></script>
     <script data-main='scripts/main' src='scripts/3rd-party/require.js'></script>
-    <link href='http://fonts.googleapis.com/css?family=Josefin+Slab' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Cutive+Mono|Josefin+Slab' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="main.css">
   </head>
   <body>
-  	<div id='effect'></div>
+  	<div class='js-effect effect-canvas'></div>
+  	<div class='js-console fake-console effect-canvas invisible'>
+  		<div class='js-console-content'></div>
+  		<div class='js-console-votes invisible'>0 for, 0 against</div>
+  	</div>
   	<div class='js-word-transition transition fade-anim'>
   		<div class='js-word-content'>effect</div>
+  	</div>
+  	<div class='js-panic panic-wrapper invisible'>
+  		<img src="assets/panic.svg" alt="Panic">
   	</div>
   </body>
 </html>

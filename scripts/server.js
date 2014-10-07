@@ -10,6 +10,8 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
   , environment: {}
   , environmentOwner: Constants.noOwner
   , processedTitleEvents: {}
+  , firebaseReferences: []
+  , rendererRef: null // XXX: CRUDE HACK TO DISABLE PLAYING
   };
 
   window._inspect_state = State;
@@ -21,6 +23,7 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
   }
 
   var offsetRef = new Firebase(Constants.firebaseUrl + '/.info/serverTimeOffset');
+  State.firebaseReferences.push(offsetRef);
   offsetRef.on("value", function(snap) {
     State.estimatedTimeOffset = snap.val();
   });
@@ -32,10 +35,31 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
     }
   }
 
+  var is_observer = function () {
+    return (location.search !== '');
+  }
+
+  var makeFullscreen = function (element) {
+    if(element.requestFullscreen) {
+      element.requestFullscreen();
+    } else if(element.mozRequestFullScreen) {
+      element.mozRequestFullScreen();
+    } else if(element.webkitRequestFullscreen) {
+      element.webkitRequestFullscreen();
+    } else if(element.msRequestFullscreen) {
+      element.msRequestFullscreen();
+    }
+  };
+
   var G = {
     init: function () {
+      $(document).one('click', function() {
+        makeFullscreen(document.documentElement);
+      });
+
       var _g = this;
-      var elem = document.getElementById('effect');
+      this.connect_votes.call(_g);
+      var elem = $('.js-effect')[0];
       $('.js-word-transition').addClass('hidden');
       var renderer = new Two(Constants.canvasDims).appendTo(elem);
 
@@ -43,7 +67,8 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
       this.make_connection_visualizer(renderer);
 
       var eventRef = new Firebase(Constants.firebaseUrl + '/events/');
-      this.setup_input(elem, eventRef);
+      State.firebaseReferences.push(eventRef);
+      this.setup_input($(document), eventRef);
 
       _g.setup_presence(function () {
         _g.load_state.call(_g, function () {
@@ -74,7 +99,16 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
           State.grid[x] = {};
         }
         State.grid[x][y] = avatar;
-      }
+      };
+
+      var add_action_tile = function (maker, pos) {
+        var x = pos.x? pos.x : 0
+          , y = pos.y? pos.y : 0;
+        if (!State.grid.hasOwnProperty(x)) {
+          State.grid[x] = {};
+        }
+        State.grid[x][y] = maker();
+      };
 
       State.environment.ball = AvatarMaker.make_ball( Constants.noOwner
                                                     , renderer, { x: 1 * gridSquareSide - gridSquareSide/2
@@ -166,13 +200,12 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
       add_pipe(Constants.noOwner, rhMaker, {x: 8, y: 8}, 3);
       add_pipe(Constants.noOwner, straightMaker, {x: 9, y: 8}, 1);
       add_pipe(Constants.noOwner, rhMaker, {x: 10, y: 8}, 2);
-      // add_pipe(2, rhMaker, {x: 3, y: 2});
-      // add_pipe(3, straightMaker, {x: 4, y: 2});
 
-      //// add_pipe(Constants.noOwner, straightMaker, {x: 3, y: 3});
-      // add_pipe(Constants.noOwner, straightMaker, {x: 3, y: 4});
-      //// add_pipe(Constants.noOwner, straightMaker, {x: 3, y: 5});
-      // add_pipe(Constants.noOwner, straightMaker, {x: 3, y: 6});
+      add_action_tile(AvatarMaker.make_ouroboros_tile, {x: 1, y: 9});
+      add_action_tile(AvatarMaker.make_crash_tile, {x: 5, y: 0});
+
+      add_action_tile(AvatarMaker.make_crash_tile, {x: 9, y: 7}); // XXX: REMOVE ME (USED FOR DEBUGGING)
+
     }
   , make_connection_visualizer: function (renderer) {
       for (var i = 0; i < Constants.requiredClients; i++) {
@@ -189,7 +222,7 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
       }
     }
   , setup_input: function (elem, eventRef) {
-      elem.onclick = function () {
+      elem.click(function () {
         if (State.avatars.hasOwnProperty(State.myRole)) {
           var currTime = estimateCurrentTime();
           var cooldown = State.avatars[State.myRole].cooldown;
@@ -205,7 +238,7 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
                           });
           }
         }
-      };
+      });
     }
   , setup_event_processing: function (eventRef) {
       var _g = this;
@@ -242,6 +275,9 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
                 // Processed earlier
                 delete State.processedTitleEvents[child.val().startTime]; // To free space
                 break;
+              case 'crash':
+                // Processed earlier
+                break;
               default:
                 console.error('Cannot process event ' + eventType);
             }
@@ -273,6 +309,14 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
                   _g.flash_titlecard(text, duration);
                 }
               break;
+              case 'crash':
+                if (location.search !== '') {
+                  $('.js-effect').addClass('invisible');
+                  _g.flash_titlecard('Payload Delivery Pending...', 5000);
+                } else {
+                  _g.simulate_console.call(_g);
+                }
+              break;
               default:
                 console.error('Cannot process event ' + eventType);
             }
@@ -294,6 +338,8 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
   , load_state: function (cb) {
       var canonicalRef = new Firebase(Constants.firebaseUrl + '/canonical/');
       var canonicalEnvironmentRef = new Firebase(Constants.firebaseUrl + '/canonicalEnvironment/');
+      State.firebaseReferences.push(canonicalRef);
+      State.firebaseReferences.push(canonicalEnvironmentRef);
       canonicalRef.once('value', function (snap) {
         snap.forEach(function (child) {
           var index = child.name();
@@ -319,7 +365,93 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
         });
       });
     }
+  , stop_listening_to_main_events: function () {
+      for (var i = 0; i < State.firebaseReferences.length; i++) {
+        State.firebaseReferences[i].off();
+      }
+      State.firebaseReferences = [];
+    }
+  , disconnect: function () {
+      Firebase.goOffline();
+    }
+  , simulate_kernel_panic: function () {
+      var _g = this;
+      _g.disconnect();
+      $('.js-effect').addClass('invisible');
+      $('.js-panic').removeClass('invisible');
+      setTimeout(function () {
+        $('.js-panic').addClass('invisible');
+        _g.flash_titlecard('affect', 5000);
+      }, 30000);
+    }
+  , connect_votes: function () {
+      var _g = this;
+      var fakeConsoleVotes = $('.js-console-votes');
+      var votesRef = new Firebase(Constants.firebaseUrl + '/voteCount');
+      var fakeConsoleContent = $('.js-console-content');
+      votesRef.on('value', function (snap) {
+        var forCount = 0;
+        var againstCount = 0;
+        snap.forEach(function (child) {
+          if (child.val()) {
+            forCount += 1;
+          } else {
+            againstCount += 1;
+          }
+        });
+        fakeConsoleVotes.text('Proceed? '+forCount+' for, '+againstCount+' against.')
+        if (forCount + againstCount >= Constants.requiredClients) {
+          if (forCount > againstCount) {
+            fakeConsoleContent.text(fakeConsoleContent.text() + '\n\nAttack Authorized.');
+            if (location.search !== '') {
+              _g.simulate_kernel_panic.call(_g);
+            }
+          } else {
+            fakeConsoleContent.text(fakeConsoleContent.text() + '\n\nAttack Aborted.');
+          }
+        }
+      });
+    }
+  , simulate_console: function () {
+      var _g = this;
+      State.rendererRef.unbind('update'); // XXX: HACK TO DISABLE PLAYING
+      _g.stop_listening_to_main_events();
+      var count = 0;
+      $('.js-effect').addClass('invisible');
+      var fakeConsole = $('.js-console');
+      var fakeConsoleVotes = $('.js-console-votes');
+      var fakeConsoleContent = $('.js-console-content');
+      fakeConsole.removeClass('invisible');
+      fakeConsoleContent.text("# env X='() { (a)=>\\' sh -c \"echo exec EFFECT\"; cat echo \n\n Uploading Payload\n\n");
+      var votesRef = new Firebase(Constants.firebaseUrl + '/voteCount');
+      var timer = setInterval(function () {
+        fakeConsoleContent.text(fakeConsoleContent.text() + '.');
+        count++;
+        if (count >= 500) {
+          fakeConsoleContent.text(fakeConsoleContent.text() + '\nCompleted. Proceed? y/n');
+          clearInterval(timer);
+          $(window).keypress(function(e) {
+              var key = e.which;
+              console.log(e.which);
+              if (key === 121) { // Y
+                fakeConsoleContent.text(fakeConsoleContent.text() + '\n\n y');
+                console.log("PROCEED");
+                votesRef.push(true);
+                fakeConsoleVotes.removeClass('invisible');
+                $(window).unbind('keypress');
+              } else if (key === 110) { // N
+                fakeConsoleContent.text(fakeConsoleContent.text() + '\n\n n');
+                console.log("ABORT");
+                votesRef.push(false);
+                fakeConsoleVotes.removeClass('invisible');
+                $(window).unbind('keypress');
+              }
+          });
+        }
+      }, 20);
+    }
   , setup_main_loop: function (renderer, eventRef) {
+      State.rendererRef = renderer;
       renderer.bind('update', this.make_update.call(this,eventRef)).play(); // Start the animation loop
     }
   , reset_ball: function (currTime) {
@@ -352,7 +484,7 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
             State.avatars[avatarIndex].gotoNextState(fractionComplete, fromState);
           }
           if (type === 'environment') {
-            if (State.myRole !== Constants.noOwner && State.myRole !== State.environmentOwner) {
+            if (State.myRole !== State.environmentOwner) {
               State.environment[identifier].snap_to_state(fromState, startTime);
             }
           }
@@ -363,7 +495,8 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
         for (var identifier in State.environment) {
           if (State.environment.hasOwnProperty(identifier)) {
             if (State.myRole != Constants.noOwner && State.myRole === State.environmentOwner) {
-              if (State.environment[identifier].should_reset(State.grid)) {
+              var resetReason = State.environment[identifier].should_reset(State.grid);
+              if (resetReason !== false) {
                 console.log("RESET!");
                 _g.reset_ball(currTime);
                 console.log("RESET EVENT");
@@ -373,12 +506,33 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
                   , duration: 10
                   , fromState: State.environment[identifier].currState
                   });
-                eventRef.push({ type: 'title'
-                  , identifier: 'reset'
-                  , startTime: Firebase.ServerValue.TIMESTAMP
-                  , duration: 1000
-                  , fromState: 'passive'
-                  });
+                var message = 'passive';
+                var titleCardDuration = 1000;
+                if (resetReason === Constants.resetReason.ouroboros) {
+                  message = 'ouroboros';
+                  titleCardDuration = 30000;
+                } else if (resetReason === Constants.resetReason.crash) {
+                  message = 'payload delivered...';
+                  titleCardDuration = 0;
+                  eventRef.push({ type: 'crash'
+                    , identifier: 'console'
+                    , duration: 5000
+                    , startTime: Firebase.ServerValue.TIMESTAMP
+                    });
+                } else if (resetReason === Constants.resetReason.hitWall) {
+                  message = 'impasse';
+                } else if (resetReason === Constants.resetReason.escapedSpace) {
+                  message = 'freedom?';
+                  titleCardDuration = 3000;
+                }
+                if (titleCardDuration > 0) {
+                  eventRef.push({ type: 'title'
+                    , identifier: 'reset'
+                    , startTime: Firebase.ServerValue.TIMESTAMP
+                    , duration: titleCardDuration
+                    , fromState: message
+                    });
+                }
                   continue; // So we don't simulate another time
               } else if (State.environment[identifier].change_state_if_necessary(currTime, State.grid)) {
                 eventRef.push({ type: 'environment'
@@ -415,6 +569,7 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
       // as long as one person is connected, and that
       // the owner is stored in State.environmentOwner
       var environmentOwnerRef = new Firebase(Constants.firebaseUrl + '/environmentOwner');
+      State.firebaseReferences.push(environmentOwnerRef);
       environmentOwnerRef.on('value', function (snap) {
         var currOwner = snap.val();
         if (currOwner === Constants.noOwner) {
@@ -452,8 +607,13 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
             requiredPositions = requiredPositions.filter(function (el) {
               return filled.indexOf(el) === -1;
             });
-            State.myRole = requiredPositions.pop();
-            userRef.set(State.myRole);
+            if (!is_observer()) {
+              State.myRole = requiredPositions.pop();
+              userRef.set(State.myRole);
+            } else {
+              State.myRole = Constants.noOwner;
+            }
+
             cb();
           });
           // Remove ourselves when we disconnect.
@@ -481,6 +641,9 @@ define(['jquery', 'two', 'color', 'constants', 'avatar_maker'], function($, Two,
       });
     }
   };
+
+  window.simulate_console = G.simulate_console;
+  window.$ = $;
 
   return G;
 });
