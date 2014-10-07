@@ -51,7 +51,8 @@ define(['color', 'constants'], function(Color, Constants) {
     return group;
   };
 
-  var make_pipe = function (owner, type, graphics) {
+  var make_pipe = function (owner, type, initState, graphics) {
+    graphics.rotation = initState * Math.PI/2;
     return {
       owner: owner
     , type: type
@@ -59,7 +60,10 @@ define(['color', 'constants'], function(Color, Constants) {
     , duration: 1000
     , cooldown: 200
     , timeStarted: undefined
-    , currState: 0
+    , currState: initState
+    , _shade: function (col) {
+        this.graphics.fill = col;
+      }
     , getNextState: function (state) {
         return state + 1;
       }
@@ -98,9 +102,13 @@ define(['color', 'constants'], function(Color, Constants) {
       , startTime: undefined
       , startPos: {x: x, y: y}
       , startDirectionVector: {x: 0, y: -1}
+      , lastTile: { x: Math.ceil(x/Constants.gridSquareSide)
+                  , y: Math.ceil(y/Constants.gridSquareSide)}
       , currState: {x: x, y: y, directionVector: {x: 0, y: -1}}
       , reset_pos: function (startTime) {
           this.startTime = startTime;
+          this.lastTile = { x: Math.ceil(this.startPos.x/Constants.gridSquareSide)
+                     , y: Math.ceil(this.startPos.y/Constants.gridSquareSide)};
           this.currState = { x: this.startPos.x
                            , y: this.startPos.y
                            , directionVector: this.startDirectionVector};
@@ -117,14 +125,15 @@ define(['color', 'constants'], function(Color, Constants) {
 
         }
       , should_reset: function (grid) {
-          var oldGridLoc = { x: Math.floor((this.currState.x + Constants.gridSquareSide/2)/Constants.gridSquareSide)
-                           , y: Math.floor((this.currState.y + Constants.gridSquareSide/2)/Constants.gridSquareSide) + 1};
+          var oldGridLoc = { x: Math.ceil((this.currState.x)/Constants.gridSquareSide )
+                           , y: Math.ceil((this.currState.y)/Constants.gridSquareSide )};
           var nextGridLoc = { x: oldGridLoc.x + this.currState.directionVector.x
                             , y: oldGridLoc.y + this.currState.directionVector.y};
           if (grid.hasOwnProperty(nextGridLoc.x) && grid[nextGridLoc.x].hasOwnProperty(nextGridLoc.y)) {
             var gridItem = grid[nextGridLoc.x][nextGridLoc.y];
+            // gridItem._shade('blue');
             if (gridItem.get_result === undefined || gridItem.get_result(this.currState.directionVector) === false) {
-              console.log("RESET BECAUSE "+gridItem.currState);
+              // console.log("RESET BECAUSE "+gridItem.currState);
               return true;
             }
           }
@@ -136,20 +145,26 @@ define(['color', 'constants'], function(Color, Constants) {
           var scale = elapsed * Constants.ballSpeedFactor;
           var newX = scale * this.currState.directionVector.x + this.currState.x;
           var newY = scale * this.currState.directionVector.y + this.currState.y;
-          var oldGridLoc = { x: Math.floor((this.currState.x + Constants.gridSquareSide/2)/Constants.gridSquareSide)
-                           , y: Math.floor((this.currState.y + Constants.gridSquareSide/2)/Constants.gridSquareSide) + 1};
-          var newGridLoc = { x: Math.floor((newX + Constants.gridSquareSide/2)/Constants.gridSquareSide)
-                           , y: Math.floor((newY + Constants.gridSquareSide/2)/Constants.gridSquareSide) + 1};
-          if (oldGridLoc.x != newGridLoc.x || oldGridLoc.y != newGridLoc.y) {
+          var oldGridLoc = this.lastTile;//{ x: Math.ceil((this.currState.x)/Constants.gridSquareSide)
+                           //, y: Math.ceil((this.currState.y)/Constants.gridSquareSide)};
+
+          var nextGridLoc = { x: oldGridLoc.x + this.currState.directionVector.x
+                            , y: oldGridLoc.y + this.currState.directionVector.y};
+
+        if (Math.abs(newX - (oldGridLoc.x * Constants.gridSquareSide - Constants.gridSquareSide/2)) >= Constants.gridSquareSide ||
+          Math.abs(newY - (oldGridLoc.y * Constants.gridSquareSide - Constants.gridSquareSide/2)) >= Constants.gridSquareSide) {
             this.startTime = currTime;
+            // console.log("DIR "+this.currState.directionVector.x+", "+this.currState.directionVector.y);
+            this.lastTile = {x: nextGridLoc.x, y: nextGridLoc.y};
             this.currState.x = newX;
             this.currState.y = newY;
-            console.log("PASSING TO "+newGridLoc.x+" "+newGridLoc.y);
-            if (grid.hasOwnProperty(newGridLoc.x) && grid[newGridLoc.x].hasOwnProperty(newGridLoc.y)) {
-              var gridItem = grid[newGridLoc.x][newGridLoc.y];
+            // console.log("AT "+this.lastTile.x+", "+this.lastTile.y);
+            if (grid.hasOwnProperty(nextGridLoc.x) && grid[nextGridLoc.x].hasOwnProperty(nextGridLoc.y)) {
+              var gridItem = grid[nextGridLoc.x][nextGridLoc.y];
               if (gridItem.type === Constants.angledPipe ||
                   gridItem.type === Constants.straightPipe) {
                 var newDir = gridItem.get_result(this.currState.directionVector);
+                // console.log("SHADE");
                 if (newDir !== false) {
                   this.currState.directionVector = newDir;
                 } else {
@@ -164,13 +179,15 @@ define(['color', 'constants'], function(Color, Constants) {
       , snap_to_state: function (state, currTime) {
           this.startTime = currTime;
           this.currState = state;
+          this.lastTile = { x: Math.ceil(state.x/Constants.gridSquareSide)
+                          , y: Math.ceil(state.y/Constants.gridSquareSide)};
           this.graphics.translation.set(state.x,state.y);
         }
       };
     }
-  , make_straight_pipe: function (owner, renderer, dims) {
+  , make_straight_pipe: function (owner, renderer, dims, initState) {
       var graphics = make_straight_pipe_graphics(renderer, dims);
-      var p = make_pipe(owner, Constants.straightPipe, graphics);
+      var p = make_pipe(owner, Constants.straightPipe, initState, graphics);
       p.get_result = function (direction) {
         if (p.currState % 2 === 0 && direction.y !== 0 && direction.x === 0) {
           return {x: 0, y: direction.y};
@@ -183,9 +200,9 @@ define(['color', 'constants'], function(Color, Constants) {
       }
       return p;
     }
-  , make_rh_pipe: function (owner, renderer, dims) {
+  , make_rh_pipe: function (owner, renderer, dims, initState) {
       var graphics = make_rh_pipe_graphics(renderer, dims);
-      var p = make_pipe(owner, Constants.angledPipe, graphics);
+      var p = make_pipe(owner, Constants.angledPipe, initState, graphics);
       p.get_result = function (direction) {
         if (p.currState % 4 === 0 && direction.y < 0 && direction.x === 0) {
           // From Below

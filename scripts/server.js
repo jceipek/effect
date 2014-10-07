@@ -54,7 +54,7 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
     }
   , add_avatars: function (renderer) {
       var gridSquareSide = Constants.gridSquareSide;
-      var add_pipe = function (owner, maker, pos) {
+      var add_pipe = function (owner, maker, pos, initState) {
         var x = pos.x? pos.x : 0
           , y = pos.y? pos.y : 0
           , width = Constants.pipeWidth
@@ -64,7 +64,7 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
                           , y: y * gridSquareSide - gridSquareSide/2
                           , width: width
                           , height: height
-                          });
+                          }, initState);
         if (owner != Constants.noOwner) {
           State.avatars[owner] = avatar;
         }
@@ -75,21 +75,102 @@ define(['two', 'color', 'constants', 'avatar_maker'], function(Two, Color, Const
       }
 
       State.environment.ball = AvatarMaker.make_ball( Constants.noOwner
-                                                    , renderer, { x: 3 * gridSquareSide - gridSquareSide/2
-                                                    , y: 7 * gridSquareSide - gridSquareSide/2
+                                                    , renderer, { x: 1 * gridSquareSide - gridSquareSide/2
+                                                    , y: 8 * gridSquareSide - gridSquareSide/2
                                                     , radius: 8
                                                     });
 
       var straightMaker = AvatarMaker.make_straight_pipe;
       var rhMaker = AvatarMaker.make_rh_pipe;
-      add_pipe(1, straightMaker, {x: 2, y: 2});
-      add_pipe(2, rhMaker, {x: 3, y: 2});
-      add_pipe(3, straightMaker, {x: 4, y: 2});
+      add_pipe(Constants.noOwner, rhMaker, {x: 1, y: 1}, 0);
+      add_pipe(Constants.noOwner, straightMaker, {x: 2, y: 1}, 1);
+      add_pipe(Constants.noOwner, rhMaker, {x: 3, y: 1}, 1);
 
-      // add_pipe(Constants.noOwner, straightMaker, {x: 3, y: 3});
-      add_pipe(Constants.noOwner, straightMaker, {x: 3, y: 4});
-      // add_pipe(Constants.noOwner, straightMaker, {x: 3, y: 5});
-      add_pipe(Constants.noOwner, straightMaker, {x: 3, y: 6});
+      add_pipe(0, rhMaker, {x: 5, y: 1}, 1);
+      add_pipe(Constants.noOwner, straightMaker, {x: 6, y: 1}, 1);
+      add_pipe(Constants.noOwner, straightMaker, {x: 7, y: 1}, 1);
+      add_pipe(Constants.noOwner, straightMaker, {x: 8, y: 1}, 1);
+      add_pipe(Constants.noOwner, straightMaker, {x: 9, y: 1}, 1);
+      add_pipe(Constants.noOwner, rhMaker, {x: 10, y: 1}, 1);
+
+      add_pipe(Constants.noOwner, rhMaker, {x: 1, y: 2}, 3);
+      add_pipe(Constants.noOwner, rhMaker, {x: 2, y: 2}, 1);
+      add_pipe(Constants.noOwner, straightMaker, {x: 3, y: 2}, 0);
+      add_pipe(Constants.noOwner, rhMaker, {x: 5, y: 2}, 0);
+      add_pipe(Constants.noOwner, straightMaker, {x: 6, y: 2}, 1);
+      add_pipe(Constants.noOwner, straightMaker, {x: 7, y: 2}, 1);
+      add_pipe(Constants.noOwner, straightMaker, {x: 8, y: 2}, 1);
+      add_pipe(Constants.noOwner, rhMaker, {x: 9, y: 2}, 1);
+      add_pipe(Constants.noOwner, straightMaker, {x: 10, y: 2}, 0);
+
+      add_pipe(Constants.noOwner, rhMaker, {x: 1, y: 3}, 0);
+      add_pipe(1, rhMaker, {x: 2, y: 3}, 2);
+      add_pipe(2, rhMaker, {x: 3, y: 3}, 3);
+      add_pipe(Constants.noOwner, rhMaker, {x: 4, y: 3}, 1);
+      add_pipe(Constants.noOwner, straightMaker, {x: 5, y: 3}, 0);
+      add_pipe(3, rhMaker, {x: 6, y: 3}, 0);
+      add_pipe(Constants.noOwner, straightMaker, {x: 7, y: 3}, 1);
+      add_pipe(Constants.noOwner, rhMaker, {x: 8, y: 3}, 1);
+      add_pipe(4, rhMaker, {x: 9, y: 3}, 3);
+      add_pipe(Constants.noOwner, rhMaker, {x: 10, y: 3}, 2);
+
+      add_pipe(Constants.noOwner, straightMaker, {x: 1, y: 4}, 0);
+      add_pipe(5, rhMaker, {x: 2, y: 4}, 0);
+      add_pipe(Constants.noOwner, rhMaker, {x: 3, y: 4}, 1);
+      add_pipe(6, rhMaker, {x: 4, y: 4}, 3);
+      add_pipe(7, rhMaker, {x: 5, y: 4}, 2);
+      add_pipe(Constants.noOwner, straightMaker, {x: 6, y: 4}, 0);
+      add_pipe(Constants.noOwner, rhMaker, {x: 8, y: 4}, 3);
+      add_pipe(Constants.noOwner, rhMaker, {x: 9, y: 4}, 1);
+
+      add_pipe(Constants.noOwner, rhMaker, {x: 1, y: 5}, 3);
+      add_pipe(Constants.noOwner, rhMaker, {x: 2, y: 5}, 2);
+      add_pipe(8, rhMaker, {x: 3, y: 5}, 0);
+      add_pipe(Constants.noOwner, straightMaker, {x: 4, y: 5}, 1);
+      add_pipe(Constants.noOwner, straightMaker, {x: 5, y: 5}, 1);
+      add_pipe(9, rhMaker, {x: 6, y: 5}, 0);
+      add_pipe(Constants.noOwner, straightMaker, {x: 7, y: 5}, 1);
+      add_pipe(10, rhMaker, {x: 8, y: 5}, 1);
+      add_pipe(Constants.noOwner, rhMaker, {x: 9, y: 5}, 2);
+
+      add_pipe(Constants.noOwner, straightMaker, {x: 1, y: 6}, 0);
+      add_pipe(Constants.noOwner, straightMaker, {x: 2, y: 6}, 0);
+      add_pipe(Constants.noOwner, straightMaker, {x: 3, y: 6}, 0);
+      add_pipe(Constants.noOwner, straightMaker, {x: 4, y: 6}, 0);
+      add_pipe(Constants.noOwner, straightMaker, {x: 5, y: 6}, 0);
+      add_pipe(Constants.noOwner, straightMaker, {x: 6, y: 6}, 0);
+      add_pipe(Constants.noOwner, straightMaker, {x: 7, y: 6}, 0);
+      add_pipe(Constants.noOwner, straightMaker, {x: 8, y: 6}, 0);
+      add_pipe(Constants.noOwner, straightMaker, {x: 9, y: 6}, 0);
+      add_pipe(Constants.noOwner, straightMaker, {x: 10, y: 6}, 0);
+
+      add_pipe(Constants.noOwner, rhMaker, {x: 1, y: 7}, 0);
+      add_pipe(Constants.noOwner, straightMaker, {x: 2, y: 7}, 1);
+      add_pipe(11, rhMaker, {x: 3, y: 7}, 1);
+      add_pipe(Constants.noOwner, straightMaker, {x: 4, y: 7}, 1);
+      add_pipe(Constants.noOwner, straightMaker, {x: 5, y: 7}, 1);
+      add_pipe(Constants.noOwner, straightMaker, {x: 6, y: 7}, 1);
+      add_pipe(12, rhMaker, {x: 7, y: 7}, 0);
+      add_pipe(13, straightMaker, {x: 8, y: 7}, 1);
+      add_pipe(Constants.noOwner, straightMaker, {x: 9, y: 7}, 1);
+      add_pipe(Constants.noOwner, rhMaker, {x: 10, y: 7}, 1);
+
+      add_pipe(Constants.noOwner, straightMaker, {x: 1, y: 8}, 0);
+      add_pipe(Constants.noOwner, rhMaker, {x: 3, y: 8}, 3);
+      add_pipe(Constants.noOwner, straightMaker, {x: 4, y: 8}, 1);
+      add_pipe(Constants.noOwner, straightMaker, {x: 5, y: 8}, 1);
+      add_pipe(Constants.noOwner, straightMaker, {x: 6, y: 8}, 1);
+      add_pipe(Constants.noOwner, rhMaker, {x: 7, y: 8}, 2);
+      add_pipe(Constants.noOwner, rhMaker, {x: 8, y: 8}, 3);
+      add_pipe(Constants.noOwner, straightMaker, {x: 9, y: 8}, 1);
+      add_pipe(Constants.noOwner, rhMaker, {x: 10, y: 8}, 2);
+      // add_pipe(2, rhMaker, {x: 3, y: 2});
+      // add_pipe(3, straightMaker, {x: 4, y: 2});
+
+      //// add_pipe(Constants.noOwner, straightMaker, {x: 3, y: 3});
+      // add_pipe(Constants.noOwner, straightMaker, {x: 3, y: 4});
+      //// add_pipe(Constants.noOwner, straightMaker, {x: 3, y: 5});
+      // add_pipe(Constants.noOwner, straightMaker, {x: 3, y: 6});
     }
   , make_connection_visualizer: function (renderer) {
       for (var i = 0; i < Constants.requiredClients; i++) {
